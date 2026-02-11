@@ -1,0 +1,48 @@
+name: benchmarks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run criterion benchmarks
+        run: cargo bench --bench criterion_benchmarks -- --noplot --output-format bencher | tee bench.txt
+      - name: Collect custom report csv files
+        run: |
+          mkdir -p benchmark-artifacts
+          cp -r target/criterion benchmark-artifacts/criterion || true
+          cp target/criterion/custom_reports/*.csv benchmark-artifacts/ 2>/dev/null || true
+          cp bench.txt benchmark-artifacts/bench.txt
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: criterion-results
+          path: benchmark-artifacts
+      - name: Detect severe perf regression
+        run: |
+          if grep -qi "regression" bench.txt; then
+            echo "Potential benchmark regression detected"
+            exit 1
+          fi
+      - name: Add benchmark summary
+        shell: bash
+        run: |
+          echo "## Benchmark Run" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Criterion artifacts uploaded." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Text output: \`bench.txt\`." >> "$GITHUB_STEP_SUMMARY"
+          if ls target/criterion/custom_reports/*.csv >/dev/null 2>&1; then
+            echo "- Custom CSV reports found in \`target/criterion/custom_reports\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- No custom CSV reports found." >> "$GITHUB_STEP_SUMMARY"
+          fi

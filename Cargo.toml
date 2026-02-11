@@ -1,0 +1,114 @@
+[package]
+name = "oxidelta"
+version = "0.1.0"
+edition = "2024"
+description = "VCDIFF (RFC 3284) delta encoder/decoder — Rust reimplementation of xdelta3"
+license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/oxidelta"
+repository = "https://github.com/sockudo/oxidelta"
+homepage = "https://github.com/sockudo/oxidelta"
+keywords = ["delta", "vcdiff", "xdelta", "patch", "compression"]
+categories = ["compression", "encoding", "command-line-utilities"]
+rust-version = "1.90"
+
+[features]
+default = ["cli", "adler32", "lzma-secondary", "zlib-secondary", "file-io"]
+cli = ["dep:clap", "dep:env_logger", "dep:serde_json"]
+adler32 = ["dep:simd-adler32"]
+lzma-secondary = ["dep:lzma-rs"]
+zlib-secondary = ["dep:flate2"]
+file-io = ["dep:sha2"]
+simd = [] # hand-written SIMD kernels (nightly may be required)
+parallel = ["dep:rayon"] # optional multithreaded helpers (off by default)
+fuzzing = []
+
+[dependencies]
+# Error handling
+thiserror = "2"
+
+# VCDIFF indicator flags
+bitflags = "2"
+
+# Logging
+log = "0.4"
+
+# Adler-32 with automatic SIMD dispatch
+simd-adler32 = { version = "0.3", optional = true }
+
+# LZMA secondary compression (pure Rust)
+lzma-rs = { version = "0.3", optional = true }
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"], optional = true }
+
+# Structured logging output (CLI only)
+env_logger = { version = "0.11", optional = true }
+
+# Zlib/Deflate secondary compression
+flate2 = { version = "1", optional = true, features = ["zlib-rs"] }
+
+# SHA-256 streaming checksums for file I/O
+sha2 = { version = "0.10", optional = true }
+
+# JSON output for CLI stats
+serde_json = { version = "1", optional = true }
+
+# Optional parallelism for section compression / batch CLI
+rayon = { version = "1.10", optional = true }
+
+[dev-dependencies]
+xdelta3 = "0.1.5"
+criterion = { version = "0.5", default-features = false, features = ["html_reports"] }
+proptest = "1.6"
+tempfile = "3.14"
+rand = "0.9"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+incremental = false
+
+[profile.pgo-generate]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+debug = 1
+strip = false
+
+[profile.pgo-use]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.dist]
+cargo-dist-version = "0.27.1"
+ci = "github"
+installers = ["shell", "powershell", "homebrew", "msi"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+]
+pr-run-mode = "plan"
+
+[[bench]]
+name = "criterion_benchmarks"
+harness = false

@@ -1,0 +1,34 @@
+[package]
+name = "oxidelta-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+oxidelta = { path = "..", features = ["fuzzing", "cli"] }
+
+[[bin]]
+name = "decode_fuzz"
+path = "fuzz_targets/decode_fuzz.rs"
+doc = false
+
+[[bin]]
+name = "roundtrip_fuzz"
+path = "fuzz_targets/roundtrip_fuzz.rs"
+doc = false
+
+[[bin]]
+name = "parser_fuzz"
+path = "fuzz_targets/parser_fuzz.rs"
+doc = false
+
+[[bin]]
+name = "encoder_decoder_fuzz"
+path = "fuzz_targets/encoder_decoder_fuzz.rs"
+doc = false
+
+[workspace]
