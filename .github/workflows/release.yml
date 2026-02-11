@@ -46,7 +46,15 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --release --bin oxidelta --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cargo install cross --locked
+            cross build --release --bin oxidelta --target "${{ matrix.target }}"
+          else
+            cargo build --release --bin oxidelta --target "${{ matrix.target }}"
+          fi
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
