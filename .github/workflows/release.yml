@@ -124,7 +124,12 @@ jobs:
           find dist -type f -exec sha256sum {} \; > dist/SHA256SUMS
 
       - name: Publish GitHub release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/**/*
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --generate-notes --verify-tag
+          find dist -type f -print0 | xargs -0 -I{} gh release upload "$tag" "{}" --clobber
+          gh release edit "$tag" --draft=false
