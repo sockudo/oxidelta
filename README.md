@@ -113,6 +113,8 @@ Automated release pipelines build and publish binaries for:
 
 See `.github/workflows/release.yml` for details.
 
+For crates.io publishing, configure repository secret `CARGO_REGISTRY_TOKEN` (an API token with publish permissions).
+
 ## Status
 
 Production hardening is ongoing. The project is already heavily tested (unit, integration, property tests, cross-interop tests against xdelta3), and release/benchmark workflows are in place.
