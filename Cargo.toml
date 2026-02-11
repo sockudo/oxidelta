@@ -1,6 +1,6 @@
 [package]
 name = "oxidelta"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "VCDIFF (RFC 3284) delta encoder/decoder — Rust reimplementation of xdelta3"
 license = "MIT"
