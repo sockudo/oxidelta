@@ -2,8 +2,6 @@ name: release-matrix
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: write
@@ -60,15 +58,3 @@ jobs:
         with:
           name: oxidelta-${{ matrix.target }}
           path: dist/*
-
-  publish:
-    if: github.event_name == 'release'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/**/*
