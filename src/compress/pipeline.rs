@@ -82,13 +82,14 @@ fn try_coalesce(a: &Instruction, b: &Instruction) -> Option<Instruction> {
             mode: *m1,
         }),
 
-        // Adjacent RUNs of the same byte → single RUN.
-        // (We don't know the byte here, so we can't verify — but adjacent RUNs
-        // in the match engine output always have the same byte since they come
-        // from contiguous target positions with identical bytes.)
-        (Instruction::Run { len: l1 }, Instruction::Run { len: l2 }) => {
-            Some(Instruction::Run { len: l1 + l2 })
-        }
+        // Adjacent RUNs: cannot coalesce because the RUN instruction
+        // does not carry the byte value (it is derived from the target
+        // position during VCDIFF encoding). Adjacent RUNs may have
+        // different bytes — e.g., when a source COPY matches a prefix
+        // and the remaining target has consecutive runs of different bytes.
+        // Merging them would cause the second run's bytes to be replaced
+        // by the first run's byte, producing silent data corruption.
+        (Instruction::Run { .. }, Instruction::Run { .. }) => None,
 
         _ => None,
     }
@@ -307,12 +308,14 @@ mod tests {
     }
 
     #[test]
-    fn coalesce_adjacent_runs() {
+    fn no_coalesce_adjacent_runs() {
         let target = vec![0xBB; 20];
         let insts = vec![Instruction::Run { len: 10 }, Instruction::Run { len: 10 }];
         let opt = optimize(&insts, &target);
-        assert_eq!(opt.len(), 1);
-        assert!(matches!(opt[0], Instruction::Run { len: 20 }));
+        // Adjacent RUNs must NOT be coalesced because they may have different bytes.
+        assert_eq!(opt.len(), 2);
+        assert!(matches!(opt[0], Instruction::Run { len: 10 }));
+        assert!(matches!(opt[1], Instruction::Run { len: 10 }));
     }
 
     #[test]

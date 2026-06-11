@@ -514,6 +514,70 @@ fn all_ones() {
 }
 
 // ---------------------------------------------------------------------------
+// Regression: adjacent RUN coalescing corruption
+// ---------------------------------------------------------------------------
+//
+// When the source and target contain runs of different bytes at adjacent
+// positions, the optimizer used to merge adjacent RUN instructions without
+// checking that they encode the same byte. This caused the VCDIFF encoder
+// to repeat the first run's byte for the combined length, silently
+// corrupting the second run's data.
+//
+// See: oxidelta-round-trip-error.md
+
+#[test]
+fn regression_adjacent_run_coalesce_uniform_data() {
+    // Source: 80,000 bytes of 'A' (0x41).
+    // Target: 40,000 A's + 10 B's (0x42) + 30,000 A's.
+    // The encoder matches a 40,000-byte source COPY, then detects a 10-byte
+    // RUN of 0x42, then a 30,000-byte RUN of 0x41. These must NOT coalesce.
+    let source = vec![0x41u8; 80_000];
+    for ins_size in [1, 10, 100, 1000, 5000] {
+        let mut target = source[..40_000].to_vec();
+        target.extend(vec![0x42u8; ins_size]);
+        target.extend_from_slice(&source[40_000..70_000]);
+
+        for level in [1, 6, 9] {
+            roundtrip(
+                &source,
+                &target,
+                CompressOptions {
+                    level,
+                    checksum: true,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+}
+
+#[test]
+fn regression_adjacent_run_coalesce_multiwindow() {
+    // Same bug but triggered across window boundaries with small windows.
+    let source = vec![0x61u8; 100_000]; // all 'a'
+    let mut target = source[..50_000].to_vec();
+    // Scatter a different byte every 997 positions to create many short runs.
+    for i in (0..target.len()).step_by(997) {
+        target[i] = 0x62; // 'b'
+    }
+
+    for ws in [64, 256, 1024, 4096] {
+        for level in [1, 6] {
+            roundtrip(
+                &source,
+                &target,
+                CompressOptions {
+                    level,
+                    window_size: ws,
+                    checksum: true,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Cross-compatibility with xdelta3 crate (C FFI)
 // ---------------------------------------------------------------------------
 
